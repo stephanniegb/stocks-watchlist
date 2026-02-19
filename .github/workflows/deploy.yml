@@ -1,66 +1,71 @@
-name: Deploy
+name: Deploy to AWS
 
 on:
   push:
-    branches:
-      - main
+    branches: [docker]
 
-jobs: 
-  deploy:
+env:
+  AWS_REGION: eu-central-1
+  ECR_FRONTEND: stock-watchlist-frontend
+  ECR_BACKEND: stock-watchlist-backend
+
+jobs:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
-    steps: 
-      - name: Checkout
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          node-version: '20'
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install dependencies
-        run: npm --prefix client install
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build client
-        run: npm --prefix client run build
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key
-          chmod 600 ~/.ssh/ec2_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Create .env file for server
-        run: |
-          echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > server/.env
-          echo "FINNHUB_API_KEY=${{ secrets.FINNHUB_API_KEY }}" >> server/.env
-          echo "PORT=3001" >> server/.env
-          echo "WS_PORT=3002" >> server/.env
-
-      - name: Create directories on EC2
-        run: |
-          ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "sudo mkdir -p /var/www/stock-watchlist/client /var/www/stock-watchlist/server && sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /var/www/stock-watchlist"
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy to EC2
-        run: |
-          # Copy built client to EC2
-          rsync -avz -e "ssh -i ~/.ssh/ec2_key" \
-            client/dist/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/stock-watchlist/client/
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+              docker login --username AWS --password-stdin \
+              ${{ steps.login-ecr.outputs.registry }}
 
-          # Copy server files to EC2
-          rsync -avz -e "ssh -i ~/.ssh/ec2_key" \
-            --exclude='node_modules' \
-            server/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/stock-watchlist/server/
-        
-      - name: Install dependencies and restart server
-        run: |
-          ssh -i ~/.ssh/ec2_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /var/www/stock-watchlist/server
-            npm install --production
-            pm2 restart stock-server || pm2 start index.js --name stock-server
-            pm2 save
-          EOF
+            cd /home/ubuntu/stock-watchlist
+
+            export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+            export IMAGE_TAG=${{ github.sha }}
+
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f

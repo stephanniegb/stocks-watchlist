@@ -1,0 +1,19 @@
+services:
+  frontend:
+    image: ${ECR_REGISTRY}/stock-watchlist-frontend:${IMAGE_TAG:-latest}
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    image: ${ECR_REGISTRY}/stock-watchlist-backend:${IMAGE_TAG:-latest}
+    restart: always
+    expose:
+      - "3001"
+      - "3002"
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - NODE_ENV=production
