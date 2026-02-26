@@ -3,6 +3,7 @@ name: Deploy to AWS
 on:
   push:
     branches: [docker]
+  workflow_dispatch:
 
 env:
   AWS_REGION: eu-central-1
@@ -49,6 +50,15 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Copy docker-compose to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: docker-compose.prod.yml
+          target: /home/ubuntu/stock-watchlist/
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
