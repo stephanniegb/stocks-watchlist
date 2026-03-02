@@ -246,6 +246,145 @@ sudo systemctl restart nginx
 
 ---
 
+# 3. Deployment to AWS EC2 with Docker
+
+## Prerequisites
+
+- AWS account
+- GitHub repository with this code
+- MongoDB Atlas cluster
+- Finnhub API key
+
+## Step 1: AWS Region
+
+Check your AWS region in the top-right corner of the console. Pick a region close to your users. If your users are in the EU and you're storing their data, use an EU region. Make sure ECR and EC2 are in the **same region** (cross-region pulls are slower and AWS charges for data transfer).
+
+## Step 2: Create ECR Repositories
+
+1. Open **AWS Console** → **ECR** (Elastic Container Registry)
+2. Create repository: `stock-watchlist-frontend` (private)
+3. Create repository: `stock-watchlist-backend` (private)
+4. Settings:
+   - **Namespace**: skip (optional, for organizing many repos)
+   - **Tag mutability**: Mutable (we use unique commit hashes as tags)
+   - **Encryption**: AES-256 default (KMS is for compliance needs)
+5. Save the **registry URI** — needed for GitHub secrets
+
+## Step 3: Launch EC2 Instance
+
+1. Open **AWS Console** → **EC2** → **Launch Instance**
+2. Configure:
+
+   | Setting | Value |
+   |---------|-------|
+   | **Name** | `stock-watchlist` |
+   | **AMI** | Switch to **Ubuntu** (default is Amazon Linux) |
+   | **Instance type** | `t3.micro` (free tier) |
+   | **Key pair** | Create new → name it → RSA → `.pem` format → download |
+
+3. **Security Group** — create new, check both:
+
+   | Rule | Why |
+   |------|-----|
+   | Allow SSH traffic | Terminal access + deploy pipeline |
+   | Allow HTTP traffic from the internet | Users can reach the app on port 80 |
+
+4. **Storage**: 8 GiB default is fine
+5. Launch and wait for instance to start
+
+## Step 4: Connect to EC2
+
+Select the instance → **Connect** → **EC2 Instance Connect** tab → **Connect**
+
+## Step 5: Install Docker on EC2
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2
+sudo usermod -aG docker ubuntu
+# Adds your user to the docker group (only root can run Docker by default)
+# Close terminal and open new session for this to take effect
+```
+
+## Step 6: Create IAM User
+
+1. AWS Console → **IAM** → **Users** → **Create User**
+2. Name: `stock-watchlist-deploy`
+3. Attach policy: `AmazonEC2ContainerRegistryPowerUser`
+4. After creation: **Security credentials** → **Create access key**
+5. Use case: "Command Line Interface (CLI)"
+6. Save **Access Key ID** + **Secret Access Key** (you won't see the secret again)
+
+## Step 7: Install AWS CLI on EC2
+
+Needed so the server can pull images from ECR:
+
+```bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt install -y unzip
+unzip awscliv2.zip
+sudo ./aws/install
+```
+
+Configure credentials:
+
+```bash
+aws configure
+# Access Key ID: from Step 6
+# Secret Access Key: from Step 6
+# Default region: same as ECR (e.g., eu-central-1)
+# Default output format: json
+```
+
+## Step 8: Create Project Directory
+
+```bash
+mkdir -p /home/ubuntu/stock-watchlist
+```
+
+## Step 9: GitHub Secrets
+
+Go to **GitHub repo** → **Settings** → **Secrets and variables** → **Actions**
+
+Already set from Part 1 (PM2 deployment):
+
+| Secret | Value |
+|--------|-------|
+| `EC2_HOST` | EC2 public IP |
+| `EC2_SSH_KEY` | Contents of `.pem` file |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `FINNHUB_API_KEY` | Finnhub API key |
+
+New for Docker (same credentials from IAM user created in Step 6):
+
+| Secret | Value |
+|--------|-------|
+| `AWS_ACCESS_KEY_ID` | IAM user access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+
+## Step 10: Deploy
+
+1. Go to **GitHub** → **Actions** → **Deploy to AWS** workflow
+2. Click **Run workflow** (manual trigger)
+3. Watch the pipeline run
+
+## Step 11: Verify
+
+1. Open browser → `http://<EC2_PUBLIC_IP>`
+2. Check app works (search, watchlist, real-time updates)
+3. Optional — verify containers on server:
+
+```bash
+docker ps
+# Should show two containers: frontend and backend
+```
+
+## Cleanup
+
+**Important:** If you created this EC2 instance just for practice, terminate it when you're done. EC2 charges per second for as long as the instance is running — even if nobody is visiting the app. ECR charges for stored images — delete the repositories if you don't need them.
+
+---
+
 ## Architecture
 
 ```
