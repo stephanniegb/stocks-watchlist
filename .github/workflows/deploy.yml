@@ -69,6 +69,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: MONGODB_URI,FINNHUB_API_KEY
           script: |
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
               docker login --username AWS --password-stdin \
@@ -78,7 +79,12 @@ jobs:
 
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
             export IMAGE_TAG=${{ github.sha }}
+            export MONGODB_URI=$MONGODB_URI
+            export FINNHUB_API_KEY=$FINNHUB_API_KEY
 
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
