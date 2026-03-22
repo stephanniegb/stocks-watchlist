@@ -54,6 +54,7 @@ npm run dev
 ```
 
 This starts:
+
 - Client: `http://localhost:5173`
 - API: `http://localhost:3001`
 - WebSocket: `ws://localhost:3002`
@@ -80,22 +81,22 @@ This starts:
 1. Go to **AWS Console** → **EC2** → **Launch Instance**
 2. Configure:
 
-   | Setting | Value |
-   |---------|-------|
-   | **Name** | `stock-watchlist` |
-   | **AMI** | Ubuntu Server 22.04 LTS |
-   | **Instance type** | `t2.micro` (free tier) or `t2.small` |
-   | **Key pair** | Create new → `stock-watchlist-key` → Download `.pem` |
+   | Setting           | Value                                                |
+   | ----------------- | ---------------------------------------------------- |
+   | **Name**          | `stock-watchlist`                                    |
+   | **AMI**           | Ubuntu Server 22.04 LTS                              |
+   | **Instance type** | `t2.micro` (free tier) or `t2.small`                 |
+   | **Key pair**      | Create new → `stock-watchlist-key` → Download `.pem` |
 
 3. **Security Group** inbound rules:
 
-   | Type | Port | Source |
-   |------|------|--------|
-   | SSH | 22 | Your IP |
-   | HTTP | 80 | 0.0.0.0/0 |
-   | HTTPS | 443 | 0.0.0.0/0 |
+   | Type  | Port | Source    |
+   | ----- | ---- | --------- |
+   | SSH   | 22   | Your IP   |
+   | HTTP  | 80   | 0.0.0.0/0 |
+   | HTTPS | 443  | 0.0.0.0/0 |
 
-4. Launch and wait for instance to start
+4. Launch and wait for instance to start.
 
 ## Step 2: Connect to EC2
 
@@ -191,13 +192,13 @@ sudo systemctl reload nginx
 
 Go to **GitHub repo** → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 
-| Secret Name | Value |
-|-------------|-------|
-| `EC2_HOST` | Your EC2 public IP (or Elastic IP) |
-| `EC2_USER` | `ubuntu` |
-| `EC2_SSH_KEY` | Contents of your `.pem` file |
-| `MONGODB_URI` | Your MongoDB connection string |
-| `FINNHUB_API_KEY` | Your Finnhub API key |
+| Secret Name       | Value                              |
+| ----------------- | ---------------------------------- |
+| `EC2_HOST`        | Your EC2 public IP (or Elastic IP) |
+| `EC2_USER`        | `ubuntu`                           |
+| `EC2_SSH_KEY`     | Contents of your `.pem` file       |
+| `MONGODB_URI`     | Your MongoDB connection string     |
+| `FINNHUB_API_KEY` | Your Finnhub API key               |
 
 ## Step 6: MongoDB Atlas IP Whitelist
 
@@ -226,6 +227,7 @@ Monitor progress in **GitHub repo** → **Actions** tab.
 ## Troubleshooting
 
 **Check Nginx:**
+
 ```bash
 sudo nginx -t
 sudo systemctl status nginx
@@ -233,12 +235,14 @@ sudo tail -f /var/log/nginx/error.log
 ```
 
 **Check PM2:**
+
 ```bash
 pm2 status
 pm2 logs stock-server
 ```
 
 **Restart services:**
+
 ```bash
 pm2 restart stock-server
 sudo systemctl restart nginx
@@ -275,18 +279,18 @@ Check your AWS region in the top-right corner of the console. Pick a region clos
 1. Open **AWS Console** → **EC2** → **Launch Instance**
 2. Configure:
 
-   | Setting | Value |
-   |---------|-------|
-   | **Name** | `stock-watchlist` |
-   | **AMI** | Switch to **Ubuntu** (default is Amazon Linux) |
-   | **Instance type** | `t3.micro` (free tier) |
-   | **Key pair** | Create new → name it → RSA → `.pem` format → download |
+   | Setting           | Value                                                 |
+   | ----------------- | ----------------------------------------------------- |
+   | **Name**          | `stock-watchlist`                                     |
+   | **AMI**           | Switch to **Ubuntu** (default is Amazon Linux)        |
+   | **Instance type** | `t3.micro` (free tier)                                |
+   | **Key pair**      | Create new → name it → RSA → `.pem` format → download |
 
 3. **Security Group** — create new, check both:
 
-   | Rule | Why |
-   |------|-----|
-   | Allow SSH traffic | Terminal access + deploy pipeline |
+   | Rule                                 | Why                                |
+   | ------------------------------------ | ---------------------------------- |
+   | Allow SSH traffic                    | Terminal access + deploy pipeline  |
    | Allow HTTP traffic from the internet | Users can reach the app on port 80 |
 
 4. **Storage**: 8 GiB default is fine
@@ -348,18 +352,18 @@ Go to **GitHub repo** → **Settings** → **Secrets and variables** → **Actio
 
 Already set from Part 1 (PM2 deployment):
 
-| Secret | Value |
-|--------|-------|
-| `EC2_HOST` | EC2 public IP |
-| `EC2_SSH_KEY` | Contents of `.pem` file |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `FINNHUB_API_KEY` | Finnhub API key |
+| Secret            | Value                           |
+| ----------------- | ------------------------------- |
+| `EC2_HOST`        | EC2 public IP                   |
+| `EC2_SSH_KEY`     | Contents of `.pem` file         |
+| `MONGODB_URI`     | MongoDB Atlas connection string |
+| `FINNHUB_API_KEY` | Finnhub API key                 |
 
 New for Docker (same credentials from IAM user created in Step 6):
 
-| Secret | Value |
-|--------|-------|
-| `AWS_ACCESS_KEY_ID` | IAM user access key |
+| Secret                  | Value               |
+| ----------------------- | ------------------- |
+| `AWS_ACCESS_KEY_ID`     | IAM user access key |
 | `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
 
 ## Step 10: Deploy
@@ -403,9 +407,11 @@ Finnhub WS → Node.js Backend → WebSocket Server → React Client
 ## WebSocket Messages
 
 **Client → Server:**
+
 - `{ type: 'init', sessionId: '...' }` - Initialize connection
 - `{ type: 'subscribe', symbol: 'AAPL' }` - Subscribe to stock
 - `{ type: 'unsubscribe', symbol: 'AAPL' }` - Unsubscribe from stock
 
 **Server → Client:**
+
 - `{ type: 'price-update', data: { symbol, price, timestamp } }` - Real-time price update
