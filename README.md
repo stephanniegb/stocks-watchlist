@@ -14,7 +14,7 @@ A real-time stock tracking application built with React and Node.js. Search for 
 
 **Frontend:** React 18, Vite, WebSocket client, CSS3
 
-**Backend:** Node.js, Express, WebSocket (ws), MongoDB/Mongoose, Finnhub API, Axios
+**Backend:** Node.js, Express, WebSocket (ws), MongoDB/Mongoose, Finnhub API, Axios.
 
 ---
 
