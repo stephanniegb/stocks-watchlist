@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: ap-southeast-2
-  ECR_FRONTEND: stock-watch-list-client
-  ECR_BACKEND: stock-watch-list-backend
+  AWS_REGION: eu-west-2
+  ECR_FRONTEND: stock-watchlist-fe
+  ECR_BACKEND: stock-watchlist-be
 
 jobs:
   build-and-deploy:
