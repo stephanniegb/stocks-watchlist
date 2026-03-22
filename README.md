@@ -2,7 +2,7 @@
 
 A real-time stock tracking application built with React and Node.js. Search for stocks, add them to your watchlist, and see live price updates via WebSocket.
 
-## Features
+## Features:
 
 - **Real-time Price Updates**: WebSocket integration with Finnhub API for live stock prices
 - **Stock Search**: Search stocks by symbol or company name
